@@ -16,6 +16,8 @@ namespace Radarr.Api.V3.Config
         public bool ShowRelativeDates { get; set; }
 
         public bool EnableColorImpairedMode { get; set; }
+
+        public string OmdbApiKey { get; set; }
     }
 
     public static class UiConfigResourceMapper
@@ -33,6 +35,8 @@ namespace Radarr.Api.V3.Config
                 ShowRelativeDates = model.ShowRelativeDates,
 
                 EnableColorImpairedMode = model.EnableColorImpairedMode,
+
+                OmdbApiKey = model.OmdbApiKey,
             };
         }
     }
