@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
 using NLog;
 using NzbDrone.Common.Cloud;
 using NzbDrone.Common.Extensions;
@@ -23,6 +26,92 @@ using NzbDrone.Core.Parser;
 
 namespace NzbDrone.Core.MetadataSource.SkyHook
 {
+    public class JustWatchPayload
+    {
+        public string age_certifications { get; set; }
+        public string content_types { get; set; }
+        public string presentation_types { get; set; }
+        public string providers { get; set; }
+        public string genres { get; set; }
+        public string languages { get; set; }
+        public int release_year_from { get; set; }
+        public int release_year_until { get; set; }
+        public string monetization_types { get; set; }
+        public string min_price { get; set; }
+        public string max_price { get; set; }
+        public string nationwide_cinema_releases_only { get; set; }
+        public string scoring_filter_types { get; set; }
+        public string cinema_release { get; set; }
+        public string query { get; set; }
+        public string page { get; set; }
+        public string page_size { get; set; }
+        public string timeline_type { get; set; }
+    }
+
+    public class FullPaths
+    {
+        public string MOVIE_DETAIL_OVERVIEW { get; set; }
+    }
+
+    public class Urls
+    {
+        public string standard_web { get; set; }
+    }
+
+    public class Offer
+    {
+        public string monetization_type { get; set; }
+        public int provider_id { get; set; }
+        public double retail_price { get; set; }
+        public string currency { get; set; }
+        public Urls urls { get; set; }
+        public List<object> subtitle_languages { get; set; }
+        public List<object> audio_languages { get; set; }
+        public string presentation_type { get; set; }
+        public string date_created_provider_id { get; set; }
+        public string date_created { get; set; }
+        public string country { get; set; }
+        public double? last_change_retail_price { get; set; }
+        public double? last_change_difference { get; set; }
+        public double? last_change_percent { get; set; }
+        public string last_change_date { get; set; }
+        public string last_change_date_provider_id { get; set; }
+    }
+
+    public class Scoring
+    {
+        public string provider_type { get; set; }
+        public double value { get; set; }
+    }
+
+    public class Item
+    {
+        public int id { get; set; }
+        public string title { get; set; }
+        public string full_path { get; set; }
+        public FullPaths full_paths { get; set; }
+        public string poster { get; set; }
+        public string short_description { get; set; }
+        public int original_release_year { get; set; }
+        public double tmdb_popularity { get; set; }
+        public string object_type { get; set; }
+        public string original_title { get; set; }
+        public List<Offer> offers { get; set; }
+        public List<Scoring> scoring { get; set; }
+        public string original_language { get; set; }
+        public int runtime { get; set; }
+        public string age_certification { get; set; }
+    }
+
+    public class RootObject
+    {
+        public int page { get; set; }
+        public int page_size { get; set; }
+        public int total_pages { get; set; }
+        public int total_results { get; set; }
+        public List<Item> items { get; set; }
+    }
+
     public class SkyHookProxy : IProvideMovieInfo, ISearchForNewMovie, IDiscoverNewMovies
     {
         private readonly IHttpClient _httpClient;
@@ -35,6 +124,7 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
         private readonly IPreDBService _predbService;
         private readonly IImportExclusionsService _exclusionService;
         private readonly IRadarrAPIClient _radarrAPI;
+        private readonly IConfigService _settingsService;
 
         public SkyHookProxy(IHttpClient httpClient,
             IRadarrCloudRequestBuilder requestBuilder,
@@ -44,6 +134,7 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
             IPreDBService predbService,
             IImportExclusionsService exclusionService,
             IRadarrAPIClient radarrAPI,
+            IConfigService settingsService,
             Logger logger)
         {
             _httpClient = httpClient;
@@ -54,6 +145,7 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
             _predbService = predbService;
             _exclusionService = exclusionService;
             _radarrAPI = radarrAPI;
+            _settingsService = settingsService;
 
             _logger = logger;
         }
@@ -297,6 +389,8 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
                 }
             }
 
+            //need to add the actual title in so it gets searched in Justwatch too
+            altTitles.Add(new AlternativeTitle(resource.title, SourceType.TMDB, tmdbId, Language.English));
             movie.AlternativeTitles.AddRange(altTitles);
 
             var people = new List<Credit>();
@@ -310,6 +404,118 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
 
                 movie.Collection.Images.AddIfNotNull(MapImage(resource.belongs_to_collection.poster_path, MediaCoverTypes.Poster));
                 movie.Collection.Images.AddIfNotNull(MapImage(resource.belongs_to_collection.backdrop_path, MediaCoverTypes.Fanart));
+            }
+
+            string enableNetflix = _settingsService.EnableNetflix;
+            string enablePrimeVideo = _settingsService.EnablePrimeVideo;
+            string enableHoopla = _settingsService.EnableHoopla;
+            string enableTubiTV = _settingsService.EnableTubiTV;
+
+            string locale = _settingsService.JustwatchLocale;
+
+            if (enableNetflix == "enabled")
+            {
+                movie.NetflixUrl = null;
+            }
+
+            if (enablePrimeVideo == "enabled")
+            {
+                movie.PrimeVideoUrl = null;
+            }
+
+            if (enableHoopla == "enabled")
+            {
+                movie.HooplaUrl = null;
+            }
+
+            if (enableTubiTV == "enabled")
+            {
+                movie.TubiTVUrl = null;
+            }
+
+            movie.JustwatchUrl = null;
+            if (movie.Status == MovieStatusType.Released)
+            {
+                string api_url = "https://apis.justwatch.com/content/titles/" + locale + "/popular";
+                foreach (var title in movie.AlternativeTitles)
+                {
+                    var payload = new JustWatchPayload();
+                    payload.age_certifications = null;
+                    payload.content_types = null;
+                    payload.presentation_types = null;
+                    payload.providers = null;
+                    payload.genres = null;
+                    payload.languages = null;
+                    payload.release_year_from = movie.Year - 1;
+                    payload.release_year_until = movie.Year + 1;
+                    payload.monetization_types = null;
+                    payload.min_price = null;
+                    payload.max_price = null;
+                    payload.nationwide_cinema_releases_only = null;
+                    payload.scoring_filter_types = null;
+                    payload.cinema_release = null;
+                    payload.query = title.ToString();
+                    payload.page = null;
+                    payload.page_size = null;
+                    payload.timeline_type = null;
+
+                    string json = JsonConvert.SerializeObject(payload);
+                    byte[] byteArray = Encoding.UTF8.GetBytes(json);
+
+                    HttpWebRequest rquest = (HttpWebRequest)WebRequest.Create(api_url);
+                    rquest.Method = "POST";
+                    using (var st = rquest.GetRequestStream())
+                    {
+                        st.Write(byteArray, 0, byteArray.Length);
+                    }
+
+                    var rsponse = (HttpWebResponse)rquest.GetResponse();
+                    var rsponseString = new StreamReader(rsponse.GetResponseStream()).ReadToEnd();
+                    rsponse.Close();
+
+                    RootObject rsponseObject = JsonConvert.DeserializeObject<RootObject>(rsponseString);
+
+                    for (int i = 0; (rsponseObject != null) && (rsponseObject.items != null) && (i < rsponseObject.items.Count); i++)
+                    {
+                        for (int j = 0; (rsponseObject.items[i].scoring != null) && (j < rsponseObject.items[i].scoring.Count); j++)
+                        {
+                            if (rsponseObject.items[i].scoring[j].provider_type == "tmdb:id")
+                            {
+                                if (rsponseObject.items[i].scoring[j].value == movie.TmdbId)
+                                {
+                                    movie.JustwatchUrl = "https://www.justwatch.com" + rsponseObject.items[i].full_path;
+                                    if (enableNetflix == "enabled" || enablePrimeVideo == "enabled" || enableHoopla == "enabled" || enableTubiTV == "enabled")
+                                    {
+                                        for (int k = 0; (rsponseObject.items[i].offers != null) && (k < rsponseObject.items[i].offers.Count); k++)
+                                        {
+                                            if (enableNetflix == "enabled" && rsponseObject.items[i].offers[k].urls.standard_web.Contains("http://www.netflix.com/title/"))
+                                            {
+                                                movie.NetflixUrl = rsponseObject.items[i].offers[k].urls.standard_web;
+                                            }
+
+                                            if (enablePrimeVideo == "enabled" && rsponseObject.items[i].offers[k].urls.standard_web.Contains("https://www.primevideo.com/detail/"))
+                                            {
+                                                movie.PrimeVideoUrl = rsponseObject.items[i].offers[k].urls.standard_web;
+                                            }
+
+                                            if (enableHoopla == "enabled" && rsponseObject.items[i].offers[k].urls.standard_web.Contains("https://www.hoopladigital.com/title/"))
+                                            {
+                                                movie.HooplaUrl = rsponseObject.items[i].offers[k].urls.standard_web;
+                                            }
+
+                                            if (enableTubiTV == "enabled" && rsponseObject.items[i].offers[k].urls.standard_web.Contains("https://tubitv.com/movies/"))
+                                            {
+                                                movie.TubiTVUrl = rsponseObject.items[i].offers[k].urls.standard_web;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
             return new Tuple<Movie, List<Credit>>(movie, people);

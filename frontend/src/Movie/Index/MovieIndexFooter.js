@@ -16,6 +16,10 @@ class MovieIndexFooter extends PureComponent {
     let movieFiles = 0;
     let monitored = 0;
     let totalFileSize = 0;
+    let netflix = 0;
+    let primeVideo = 0;
+    let tubiTV = 0;
+    let hoopla = 0;
 
     movies.forEach((s) => {
 
@@ -31,6 +35,19 @@ class MovieIndexFooter extends PureComponent {
 
       if (s.monitored) {
         monitored++;
+      }
+
+      if (s.netflixUrl) {
+        netflix++;
+      }
+      if (s.primeVideoUrl) {
+        primeVideo++;
+      }
+      if (s.tubiTVUrl) {
+        tubiTV++;
+      }
+      if (s.hooplaUrl) {
+        hoopla++;
       }
 
       totalFileSize += s.sizeOnDisk;
@@ -96,6 +113,28 @@ class MovieIndexFooter extends PureComponent {
               data={formatBytes(totalFileSize)}
             />
           </DescriptionList>
+
+          <DescriptionList>
+		        <DescriptionListItem
+			        title="Netflix"
+			        data={netflix}
+			      />
+
+			      <DescriptionListItem
+			        title="PrimeVideo"
+			        data={primeVideo}
+			      />
+			      
+            <DescriptionListItem
+			        title="TubiTV"
+			        data={tubiTV}
+	          />
+			  
+            <DescriptionListItem
+			        title="Hoopla"
+			        data={hoopla}
+			      />
+			    </DescriptionList>
         </div>
       </div>
     );
