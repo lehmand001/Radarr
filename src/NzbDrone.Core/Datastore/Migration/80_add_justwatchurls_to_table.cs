@@ -3,7 +3,7 @@ using NzbDrone.Core.Datastore.Migration.Framework;
 
 namespace NzbDrone.Core.Datastore.Migration
 {
-     [Migration(168)]
+     [Migration(80)]
      public class add_justwatchflicksurls : NzbDroneMigrationBase
      {
           protected override void MainDbUpgrade()
