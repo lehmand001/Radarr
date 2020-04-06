@@ -340,7 +340,7 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
             foreach (var releaseDates in resource.release_dates.results)
             {
                 foreach (var releaseDate in releaseDates.release_dates)
-                //if (releaseDates.iso_3166_1 == "US")
+                if (releaseDates.iso_3166_1 == "US")
                 {
                     foreach (ReleaseDate releaseDate in releaseDates.release_dates)
                     {
@@ -372,12 +372,12 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
                 var certRelease = countryReleases.release_dates.OrderByDescending(c => c.type).Where(d => d.type <= 3).FirstOrDefault(c => c.certification.IsNotNullOrWhiteSpace());
 
                 movie.Certification = certRelease?.certification;
-            /*if (movie.Year != 0 && _settingsService.OmdbApiKey.IsNotNullOrWhiteSpace())
+            if (movie.Year != 0 && _settingsService.OmdbApiKey.IsNotNullOrWhiteSpace())
             {
                 Tuple<DateTime?, DateTime?> t = determineReleaseDates(movie.InCinemas, movie.PhysicalRelease, movie.ImdbId);
                 movie.InCinemas = t.Item1;
                 movie.PhysicalRelease = t.Item2;
-            */
+            
             }
 
             movie.Ratings = new Ratings();
