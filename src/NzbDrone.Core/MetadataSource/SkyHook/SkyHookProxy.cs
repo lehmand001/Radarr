@@ -239,7 +239,7 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
             return Tuple.Create(omdbInCinemas, omdbPhysicalRelease);
         }
 
-        public Tuple<Movie, List<Credit>> GetMovieInfo(int tmdbId, Profile profile, bool hasPreDBEntry)
+        public Tuple<Movie, List<Credit>> GetMovieInfo(int tmdbId, bool hasPreDBEntry)
         {
             var langCode = "en";
 
