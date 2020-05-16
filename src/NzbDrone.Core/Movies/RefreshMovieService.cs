@@ -112,6 +112,58 @@ namespace NzbDrone.Core.Movies
             movie.Studio = movieInfo.Studio;
             movie.HasPreDBEntry = movieInfo.HasPreDBEntry;
 
+            if (_configService.EnableNetflix == "disabledKeep")
+            {
+                movieInfo.NetflixUrl = movie.NetflixUrl;
+            }
+
+            if (_configService.EnablePrimeVideo == "disabledKeep")
+            {
+                movieInfo.PrimeVideoUrl = movie.PrimeVideoUrl;
+            }
+
+            if (_configService.EnableHoopla == "disabledKeep")
+            {
+                movieInfo.HooplaUrl = movie.HooplaUrl;
+            }
+
+            if (_configService.EnableTubiTV == "disabledKeep")
+            {
+                movieInfo.TubiTVUrl = movie.TubiTVUrl;
+            }
+
+            bool leftNetflix = movie.NetflixUrl != null && movieInfo.NetflixUrl == null;
+            bool leftPrimeVideo = movie.PrimeVideoUrl != null && movieInfo.PrimeVideoUrl == null;
+            bool leftTubiTV = movie.TubiTVUrl != null && movieInfo.TubiTVUrl == null;
+            bool leftHoopla = movie.HooplaUrl != null && movieInfo.HooplaUrl == null;
+
+            if (!movie.Monitored && (leftNetflix || leftPrimeVideo || leftTubiTV || leftHoopla))
+            {
+                movie.Monitored = true;
+            }
+
+            bool onNetflix = movieInfo.NetflixUrl != null;
+            bool onPrimeVideo = movieInfo.PrimeVideoUrl != null;
+            bool onTubiTV = movieInfo.TubiTVUrl != null;
+            bool onHoopla = movieInfo.HooplaUrl != null;
+
+            if (movie.Monitored)
+            {
+                if (((_configService.IgnoreNetflixTitles == true) && onNetflix) ||
+                    ((_configService.IgnorePrimeVideoTitles == true) && onPrimeVideo) ||
+                    ((_configService.IgnoreTubiTVTitles == true) && onTubiTV) ||
+                    ((_configService.IgnoreHooplaTitles == true) && onHoopla))
+                {
+                    movie.Monitored = false;
+                }
+            }
+
+            movie.JustwatchUrl = movieInfo.JustwatchUrl;
+            movie.NetflixUrl = movieInfo.NetflixUrl;
+            movie.PrimeVideoUrl = movieInfo.PrimeVideoUrl;
+            movie.HooplaUrl = movieInfo.HooplaUrl;
+            movie.TubiTVUrl = movieInfo.TubiTVUrl;
+
             try
             {
                 movie.Path = new DirectoryInfo(movie.Path).FullName;

@@ -122,6 +122,10 @@ const links = [
       {
         title: 'UI',
         to: '/settings/ui'
+      },
+      {
+        title: 'Justwatch',
+        to: '/settings/justwatch'
       }
     ]
   },

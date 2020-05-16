@@ -144,6 +144,17 @@ function Settings() {
         <div className={styles.summary}>
           Calendar, date and color impaired options
         </div>
+
+        <Link
+		      className={styles.link}
+	        to="/settings/justwatch"
+	      >
+	        Justwatch 
+	      </Link>
+
+        <div className={styles.summary}>
+          Justwatch Support (Netflix, Prime etc.) 
+        </div>
       </PageContentBodyConnector>
     </PageContent>
   );
